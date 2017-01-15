@@ -177,7 +177,7 @@ def pcg(X, Q, G, D, lambda_, do_pcond, sub_rate):
         selected = np.sort(whole[np.arange(0, np.max((1, np.int(np.floor(sub_rate * l)))))])
         X = X[selected, :]
         Q = Q[:, selected]
-        D = D[np.ix_(selected, selected)]
+        D = sp.coo_matrix((D.data[selected], (np.arange(len(selected)), np.arange(len(selected))))).tocsr()
     l = X.shape[0]
     s_bar = np.zeros(G.shape)
     M = np.ones(G.shape)
