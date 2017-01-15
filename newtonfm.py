@@ -193,7 +193,7 @@ def pcg(X, Q, G, D, lambda_, do_pcond, sub_rate):
         cg_iters += 1
         Dh = np.multiply(M, d)
         z = 0.5 * np.sum(np.multiply(Q.T, X.dot(Dh.T)), axis=1, keepdims=True)
-        spmat = sp.coo_matrix((D*z.ravel(), (precomp_indices, precomp_indices))).tocsr()
+        spmat = sp.coo_matrix((D.dot(z).ravel(), (precomp_indices, precomp_indices))).tocsr()
         Dh = np.multiply(M, lambda_ * Dh + 0.5 * (1/sub_rate) * (X.T.dot(spmat.T).dot(Q.T)).T)
         alpha = gamma / np.sum(np.multiply(d, Dh))
         s_bar += alpha * d
