@@ -12,5 +12,8 @@ The authors provided a matlab implementation [here](https://www.csie.ntu.edu.tw/
 - scipy
 - scikit-learn (for the example)
 
+## Example
 
-
+```bash
+python example.py
+```
