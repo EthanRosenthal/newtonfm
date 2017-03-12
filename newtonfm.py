@@ -12,6 +12,7 @@ import time
 
 import numpy as np
 import scipy.sparse as sp
+from scipy.sparse.linalg import LinearOperator, eigsh
 from scipy.special import expit
 
 
@@ -57,10 +58,38 @@ class FactorizationMachineClassifier(object):
         self.warm_start = False
         self.total_iters = None
 
+    @property
+    def P(self):
+        if hasattr(self, '_P'):
+            return self._P
+        else:
+            raise AttributeError('P has not been calculated yet. '
+                                 'Run calc_P() first.')
+
+    def _diagonalize_latent_vectors(self):
+
+        def _M(x):
+            # Backwards from blondel paper 
+            # because U ~ (num_latent_factors, num_features))
+            return 0.5 * ( np.dot(self.U.T, np.dot(self.V, x))
+                         + np.dot(self.V.T, np.dot(self.U, x) ) )
+
+        M = LinearOperator((self.U.shape[1], self.V.shape[1]),
+                            matvec=_M, dtype=self.U.dtype)
+        w, v = eigsh(M, k=self.U.shape[0] * 2) # k = 2*rank
+        return w, v
+
+    def calc_P(self):
+        w, v = self._diagonalize_latent_vectors()
+        self._P = np.multiply(w, v).T
+
+    @staticmethod
+    def expclip(x):
+        return np.exp(np.clip(x, a_min=-10, a_max=10))
+
     def fit(self, X, y):
         self.initialize_model(X, y)
         self.fit_partial(X, y)
-
 
     def initialize_model(self, X, y):
         self.l, self.n = X.shape
@@ -73,7 +102,7 @@ class FactorizationMachineClassifier(object):
         self.V = 2 * (0.1 / np.sqrt(self.d)) * (np.random.random((self.d, self.n)) - 0.5)
 
         self.y_tilde = self.predict(X)
-        self.expyy = np.exp(np.multiply(y, self.y_tilde))
+        self.expyy = self.expclip(np.multiply(y, self.y_tilde))
         self.loss = np.sum(np.log1p(1.0 / self.expyy))
         self.f = (0.5 * (self.lambda_U * np.sum(np.multiply(self.U, self.U))
                          + self.lambda_V * np.sum(np.multiply(self.V, self.V)))
@@ -99,7 +128,7 @@ class FactorizationMachineClassifier(object):
 
     def _fit(self, X, y):
         if self.fit_linear:
-            nt_iters_w, G_norm_w, cg_iters_w = self.update_block(y, X, self.w, 2*np.ones((1, self.l)), self.lambda_w)
+            nt_iters_w, G_norm_w, cg_iters_w = self.update_block(y, X, self.w,2*np.ones((1, self.l)), self.lambda_w)
         else:
             nt_iters_w = -1
             G_norm_w = -1
@@ -177,7 +206,7 @@ class FactorizationMachineClassifier(object):
                 # loss_new = np.sum(np.logaddexp(0, -np.multiply(y, y_tilde_new)))
                 # However, what to do with self.expyy that uses expyy_new?
                 # Alternatively, maybe we clip expyy?
-                expyy_new = np.exp(np.multiply(y, y_tilde_new))
+                expyy_new = self.expclip(np.multiply(y, y_tilde_new))
                 loss_new = np.sum(np.log1p(np.divide(1.0, expyy_new)))
 
                 f_diff = 0.5 * lambda_ * (2 * theta * US + theta * theta * SS) + loss_new - self.loss
