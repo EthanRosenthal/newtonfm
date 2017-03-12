@@ -85,7 +85,7 @@ class FactorizationMachineClassifier(object):
 
     @staticmethod
     def expclip(x):
-        return np.exp(np.clip(x, a_min=-10, a_max=10))
+        return np.exp(np.clip(x, a_min=-18, a_max=18))
 
     def fit(self, X, y):
         self.initialize_model(X, y)
